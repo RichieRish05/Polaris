@@ -1,9 +1,47 @@
+"use client"
+
 import type React from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { FileText } from "lucide-react"
+import { useAuthStore } from "@/app/store/useAuthStore"
+import { useEffect } from "react"
+
+
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { user, isAuthenticated, logout, setUser} = useAuthStore()
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/oauth/me`, {
+          credentials: 'include',
+        })
+        if (!response.ok) {
+          setUser(null)
+          return
+        }
+        const data = await response.json()
+        setUser(data)
+      } catch (error) {
+        console.error('Error during fetchUser:', error)
+        setUser(null)
+      }
+    }
+  
+    fetchUser()
+  }, [])
+
+  const handleLogout = () => {
+    logout()
+  }
+
+  const handleLogin = () => {
+    window.location.href = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/oauth/authorize`
+  }
+
+
   return (
     <div className="flex min-h-screen bg-background">
       {/* Sidebar */}
@@ -57,13 +95,20 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <h1 className="text-2xl font-semibold tracking-tight">Resume Review Jobs</h1>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm">
-              Feedback
-            </Button>
-            <Button variant="outline" size="sm">
-              Docs
-            </Button>
-            <div className="h-8 w-8 rounded-full bg-muted" />
+            {isAuthenticated ? (
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                Log Out
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" onClick={handleLogin}>
+                Log In With Google
+              </Button>
+            )}
+            {/* <div className="h-8 w-8 rounded-full bg-muted" /> */}
+            {isAuthenticated ?
+              <img src={user?.picture} alt="User Profile Picture" className="h-8 w-8 rounded-full" /> : 
+              <div className="h-8 w-8 rounded-full bg-muted" />
+          }
           </div>
         </header>
 

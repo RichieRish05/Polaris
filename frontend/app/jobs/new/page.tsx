@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Button } from "@/components/ui/button"
@@ -32,6 +32,23 @@ export default function NewJobPage() {
   const [jobName, setJobName] = useState("")
   const [jobDescription, setJobDescription] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [driveFiles, setDriveFiles] = useState<any[]>([])
+
+
+  useEffect(() => {
+    const fetchDriveFiles = async () => {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/oauth/drive-files`, {
+        credentials: 'include',
+      })
+      const data = await response.json()
+      console.log('DATA', data)
+      setDriveFiles(data)
+    }
+    fetchDriveFiles()
+
+  }, [])
+
+  console.log('DRIVE FILES', driveFiles)
 
   const handleFolderSelect = (folder: DriveFolder) => {
     setSelectedFolder(folder)

@@ -13,11 +13,11 @@ export default function SettingsPage() {
   const [connectedEmail, setConnectedEmail] = useState("")
 
   const handleConnect = async () => {
-    // setIsLoading(true)
-    // // Redirect to OAuth authorize endpoint
-    // window.location.href = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/oauth/authorize`
-    // setIsLoading(false)
-    await getUser()
+    setIsLoading(true)
+    // Redirect to OAuth authorize endpoint
+    window.location.href = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/oauth/authorize`
+    setIsLoading(false)
+    // await getUser()
   }
 
   const handleDisconnect = async () => {

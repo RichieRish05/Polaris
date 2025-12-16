@@ -57,10 +57,12 @@ class OAuthCredentialsService:
         return flow.authorization_url()
 
 
-    async def store_credentials(self, email: str, credentials: Credentials):
+    async def store_credentials(self, userinfo: dict, credentials: Credentials):
         """
         Store credentials in database
         """
+        email = userinfo.get('email')
+        picture = userinfo.get('picture')
 
         access_token = credentials.token
         refresh_token = credentials.refresh_token
@@ -74,6 +76,7 @@ class OAuthCredentialsService:
             if not user_result:
                 user_insert = supabase.table("User").insert({
                     "email": email,
+                    "picture": picture,
                     "created_at": datetime.now().isoformat()
                 }).execute().data
                 user = user_insert[0] 

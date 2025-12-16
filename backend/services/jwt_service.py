@@ -13,8 +13,6 @@ class JwtService:
         return jwt.encode(payload_with_exp, self.secret_key, algorithm=self.algorithm)
 
     def verify_token(self, token: str):
-        if not token:
-            return None
         try:
             return jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
         except jwt.ExpiredSignatureError:
@@ -26,7 +24,6 @@ class JwtService:
         payload = self.verify_token(token)
         if payload:
             return payload.get("user_id")
-    
         return None
 
 

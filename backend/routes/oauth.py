@@ -22,7 +22,7 @@ async def get_oauth_redirect_uri(response: Response, request: Request):
     # Check if user is already authenticated
     payload = jwt_service.verify_token(request.cookies.get("access_token"))
     if payload:
-        return RedirectResponse(f"{BASE_URL}/")
+        return RedirectResponse(f"{BASE_URL}/", status_code=302)
 
     
 
@@ -32,17 +32,15 @@ async def get_oauth_redirect_uri(response: Response, request: Request):
         prompt='consent'        # Force consent screen to get refresh token
     )
 
-    # Create redirect response
-    redirect_response = RedirectResponse(redirect_url)
-    
-    # Set state cookie on the redirect response
+    # Create redirect response and set state cookie on it
+    redirect_response = RedirectResponse(redirect_url, status_code=302)
     redirect_response.set_cookie(
         key="oauth_state",
         value=state,
         max_age=600,
         httponly=True,
-        secure=True,
-        samesite="none",
+        secure=False,  # Set to False for local development, True for production HTTPS
+        samesite="lax",  # Changed from "none" to "lax" for better compatibility
         path="/"
     )
 
@@ -66,18 +64,13 @@ async def oauth_callback(
     credentials = flow.credentials
 
 
-    # Get user email using Google API client
+    # Get user information using Google API client
     service = build('oauth2', 'v2', credentials=credentials)
     userinfo = service.userinfo().get().execute()
-    email = userinfo.get('email')
-
-    if not email:
-        raise HTTPException(status_code=400, detail="Could not retrieve email from Google")
-
 
     # Store credentials in database
     try:
-        oauth_credentials = await oauth_credentials_service.store_credentials(email, credentials)
+        oauth_credentials = await oauth_credentials_service.store_credentials(userinfo, credentials)
     except Exception as e:
         print(f"Error storing credentials: {e}")
         raise HTTPException(status_code=500, detail="Failed to store credentials")
@@ -104,7 +97,6 @@ async def oauth_callback(
 
 @router.get("/me")
 def get_me(request: Request):
-    print(request.cookies.get("access_token"))
     payload = jwt_service.verify_token(request.cookies.get("access_token"))
     if not payload:
         raise HTTPException(status_code=401, detail="Unauthorized invalid token")
@@ -116,3 +108,47 @@ def get_me(request: Request):
     user = user[0]
     
     return user
+
+@router.post("/logout")
+def logout(response: Response):
+    """
+    Logout endpoint that clears the JWT token cookie.
+    """
+    response.delete_cookie(
+        key="access_token",
+        path="/",
+        samesite="lax"
+    )
+    return {"message": "Logged out successfully"}
+
+
+@router.get("/drive-files")
+def get_drive_files(request: Request):
+    payload = jwt_service.verify_token(request.cookies.get("access_token"))
+    if not payload:
+        raise HTTPException(status_code=401, detail="Unauthorized invalid token")
+
+    user_id = payload.get("user_id")
+    supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_ROLE_KEY"))
+    credentials_data = supabase.table("OauthCredentials").select("*").eq("user_id", user_id).execute().data
+    if not credentials_data:
+        raise HTTPException(status_code=401, detail="Unauthorized could not find credentials")
+    credentials_data = credentials_data[0]
+
+    credentials = Credentials(
+        token=credentials_data.get("access_token"),
+        refresh_token=credentials_data.get("refresh_token"),
+        token_uri=credentials_data.get("token_uri"),
+        client_id=os.getenv("GOOGLE_CLIENT_ID"),
+        client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+        scopes=[
+            "openid", 
+            "https://www.googleapis.com/auth/userinfo.email", 
+            "https://www.googleapis.com/auth/userinfo.profile",
+            "https://www.googleapis.com/auth/drive.file"
+        ],
+    )
+    service = build('drive', 'v3', credentials=credentials)
+    files = service.files().list().execute()
+    print('FILES', files)
+    return files
