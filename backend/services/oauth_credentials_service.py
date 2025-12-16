@@ -45,7 +45,7 @@ class OAuthCredentialsService:
                 "openid", 
                 "https://www.googleapis.com/auth/userinfo.email", 
                 "https://www.googleapis.com/auth/userinfo.profile",
-                "https://www.googleapis.com/auth/drive.file"
+                "https://www.googleapis.com/auth/drive.readonly"
             ],
             redirect_uri=REDIRECT_URI,
         )
@@ -82,14 +82,17 @@ class OAuthCredentialsService:
                 user = user_insert[0] 
             else:
                 user = user_result[0]
-            
-            if not user:
-                raise ValueError(f"Failed to create or retrieve user for email: {email}")
-            
+                        
             user_id = user['id']
-            
+    
             # Check if credentials already exist for this user
             existing_credentials = supabase.table("OauthCredentials").select("*").eq("user_id", user_id).execute().data
+
+            # Google often only returns a refresh_token on the *first* consent for a given user+client.
+            # On subsequent auth flows, credentials.refresh_token may be None — do not overwrite a
+            # previously stored refresh_token in that case.
+            if not refresh_token and existing_credentials:
+                refresh_token = existing_credentials[0].get("refresh_token")
             
             credential_data = {
                 "user_id": user_id,
@@ -114,20 +117,17 @@ class OAuthCredentialsService:
 
         except Exception as e:
             print(f"Error storing credentials: {e}")
-            return False
-
-        return True
+            return None
     
-    async def get_credentials(self, email: str):
+    async def get_credentials(self, user_id: int):
         """
         Get credentials from database
         """
         supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_ROLE_KEY"))
-        user = supabase.table("User").select("*").eq("email", email).execute().data
+        user = supabase.table("User").select("*").eq("id", user_id).execute().data
         
         if not user or len(user) == 0:
-            raise ValueError(f"No user found for email: {email}")
-        user_id = user[0]['id']
+            raise ValueError(f"No user found for user_id: {user_id}")
 
         credential_data = supabase.table("OauthCredentials").select("*").eq("user_id", user_id).execute().data
         if not credential_data or len(credential_data) == 0:
@@ -145,7 +145,7 @@ class OAuthCredentialsService:
                 "openid", 
                 "https://www.googleapis.com/auth/userinfo.email", 
                 "https://www.googleapis.com/auth/userinfo.profile",
-                "https://www.googleapis.com/auth/drive.file"
+                "https://www.googleapis.com/auth/drive.readonly"
             ],
         )
 
