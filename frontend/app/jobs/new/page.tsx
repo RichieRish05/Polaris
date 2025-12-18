@@ -13,17 +13,8 @@ import { ChevronRight, Folder, FileText, Loader2 } from "lucide-react"
 interface DriveFolder {
   id: string
   name: string
-  fileCount: number
 }
 
-const mockFolders: DriveFolder[] = [
-  { id: "1", name: "Internship Applications", fileCount: 127 },
-  { id: "2", name: "SWE Applications", fileCount: 89 },
-  { id: "3", name: "PM Resumes", fileCount: 45 },
-  { id: "4", name: "Marketing Applications", fileCount: 62 },
-  { id: "5", name: "DS Intern Apps", fileCount: 31 },
-  { id: "6", name: "Design Portfolio Reviews", fileCount: 18 },
-]
 
 export default function NewJobPage() {
   const router = useRouter()
@@ -32,23 +23,42 @@ export default function NewJobPage() {
   const [jobName, setJobName] = useState("")
   const [jobDescription, setJobDescription] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [driveFiles, setDriveFiles] = useState<any[]>([])
+  const [driveFolders, setDriveFolders] = useState<any[]>([])
+  const [nextPageToken, setNextPageToken] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [canRestart, setCanRestart] = useState(false)
 
 
-  useEffect(() => {
-    const fetchDriveFiles = async () => {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/oauth/drive-files`, {
+  const fetchDriveFiles = async (fromBeginning: boolean = false, pageSize: number = 10) => {
+    setIsLoading(true)
+    const params = new URLSearchParams({ page_size: pageSize.toString() })
+
+    if (fromBeginning) {
+      setNextPageToken(null)
+    }
+    else if (nextPageToken) {
+      params.append('next_page_token', nextPageToken)
+    }
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/oauth/drive-files?${params.toString()}`, {
         credentials: 'include',
       })
       const data = await response.json()
-      console.log('DATA', data)
-      setDriveFiles(data)
+      setDriveFolders(data.files)
+      setNextPageToken(data.nextPageToken)
+      setCanRestart(true)
+    } catch (error) {
+      console.error('Error fetching drive files:', error)
+    } finally {
+      setIsLoading(false)
     }
-    fetchDriveFiles()
+  }
 
+  useEffect(() => {
+    fetchDriveFiles();
   }, [])
 
-  console.log('DRIVE FILES', driveFiles)
 
   const handleFolderSelect = (folder: DriveFolder) => {
     setSelectedFolder(folder)
@@ -116,12 +126,18 @@ export default function NewJobPage() {
                 <CardDescription>Choose a folder containing PDF resumes to review</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  {mockFolders.map((folder) => (
+                <div className="space-y-2 grid grid-cols-2 gap-4 min-h-[500px] overflow-y-auto">
+                  {isLoading ? (
+                    <div className="flex flex-col items-center justify-center col-span-2">
+                      <Loader2 className="h-8 w-8 animate-spin" />
+                      <p className="text-medium text-muted-foreground">Loading folders...</p>
+                    </div>
+                  ) : (
+                    driveFolders.map((folder) => (
                     <button
                       key={folder.id}
                       onClick={() => handleFolderSelect(folder)}
-                      className={`flex w-full items-center justify-between rounded-lg border p-4 text-left transition-colors hover:bg-accent ${
+                      className={`flex w-full h-20 items-center justify-between rounded-lg border p-4 text-left hover:bg-accent ${
                         selectedFolder?.id === folder.id ? "border-primary bg-accent" : "border-border"
                       }`}
                     >
@@ -129,27 +145,21 @@ export default function NewJobPage() {
                         <Folder className="h-5 w-5 text-muted-foreground" />
                         <div>
                           <p className="font-medium">{folder.name}</p>
-                          <p className="text-sm text-muted-foreground">{folder.fileCount} PDFs</p>
                         </div>
                       </div>
-                      {selectedFolder?.id === folder.id && (
-                        <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center">
-                          <svg
-                            className="h-3 w-3 text-primary-foreground"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="3"
-                            viewBox="0 0 24 24"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                        </div>
-                      )}
                     </button>
-                  ))}
+                    ))
+                  )}
                 </div>
-                <div className="mt-6 flex justify-end">
+                <div className="mt-6 flex justify-between">
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={() => {fetchDriveFiles(true)}} disabled={isLoading}>
+                      First Page
+                    </Button>
+                    <Button variant="outline" onClick={() => fetchDriveFiles()} disabled={isLoading}>
+                      Next Page
+                    </Button>
+                  </div>
                   <Button onClick={() => setStep(2)} disabled={!selectedFolder}>
                     Continue
                     <ChevronRight className="ml-2 h-4 w-4" />
@@ -232,7 +242,7 @@ export default function NewJobPage() {
                   <div className="flex items-center gap-2 border-t border-border pt-4">
                     <FileText className="h-4 w-4 text-muted-foreground" />
                     <p className="text-sm">
-                      <span className="font-medium">{selectedFolder?.fileCount}</span> resumes will be processed
+                      {/* <span className="font-medium">{selectedFolder?.fileCount}</span> resumes will be processed */}
                     </p>
                   </div>
                 </div>

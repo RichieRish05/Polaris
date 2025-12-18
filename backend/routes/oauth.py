@@ -123,7 +123,7 @@ async def logout(response: Response):
 
 
 @router.get("/drive-files")
-async def get_drive_files(request: Request):
+async def get_drive_files(request: Request, next_page_token: str = None, page_size: int = 10):
     payload = jwt_service.verify_token(request.cookies.get("access_token"))
     if not payload:
         raise HTTPException(status_code=401, detail="Unauthorized invalid token")
@@ -132,42 +132,16 @@ async def get_drive_files(request: Request):
     credentials = await oauth_credentials_service.get_credentials(user_id)
 
     service = build('drive', 'v3', credentials=credentials)
-    files = service.files().list(
-        q="mimeType = 'application/vnd.google-apps.folder'",
-
-    ).execute()
-    print('FILES', files)
+    
+    # Build query parameters
+    query_params = {
+        "q": "mimeType = 'application/vnd.google-apps.folder'",
+        "pageSize": page_size
+    }
+    
+    # Only add pageToken if it's provided and not empty/null
+    if next_page_token and next_page_token != "null":
+        query_params["pageToken"] = next_page_token
+    
+    files = service.files().list(**query_params).execute()
     return files
-
-"""
-  try:
-    # create drive api client
-    service = build("drive", "v3", credentials=creds)
-    files = []
-    page_token = None
-    while True:
-      # pylint: disable=maybe-no-member
-      response = (
-          service.files()
-          .list(
-              q="mimeType='image/jpeg'",
-              spaces="drive",
-              fields="nextPageToken, files(id, name)",
-              pageToken=page_token,
-          )
-          .execute()
-      )
-      for file in response.get("files", []):
-        # Process change
-        print(f'Found file: {file.get("name")}, {file.get("id")}')
-      files.extend(response.get("files", []))
-      page_token = response.get("nextPageToken", None)
-      if page_token is None:
-        break
-
-  except HttpError as error:
-    print(f"An error occurred: {error}")
-    files = None
-
-  return files
-  """
