@@ -27,7 +27,8 @@ REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI")
 
 class OAuthCredentialsService:
 
-    def get_flow(self):
+    @staticmethod
+    def get_flow():
         """
         Get the OAuth flow for the Google API in order to get the credentials
         """
@@ -49,15 +50,17 @@ class OAuthCredentialsService:
             ],
             redirect_uri=REDIRECT_URI,
         )
-    
-    def get_redirect_uri(self, flow: Flow):
+
+    @staticmethod
+    def get_redirect_uri(flow: Flow):
         """
         Get the redirect URI for the OAuth flow
         """
         return flow.authorization_url()
 
 
-    async def store_credentials(self, userinfo: dict, credentials: Credentials):
+    @staticmethod
+    async def store_credentials(userinfo: dict, credentials: Credentials):
         """
         Store credentials in database
         """
@@ -119,26 +122,40 @@ class OAuthCredentialsService:
             print(f"Error storing credentials: {e}")
             return None
     
-    async def get_credentials(self, user_id: int):
+    @staticmethod
+    async def get_credentials(user_id: int):
         """
         Get credentials from database
         """
+        credential_data = await OAuthCredentialsService.get_credentials_dict(user_id)
+        return OAuthCredentialsService.from_authorized_user_info(credential_data)
+
+
+    @staticmethod
+    async def get_credentials_dict(user_id: int) -> dict:
+        """
+        Get credentials dictionary from database
+        """
         supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_ROLE_KEY"))
         user = supabase.table("User").select("*").eq("id", user_id).execute().data
-        
         if not user or len(user) == 0:
             raise ValueError(f"No user found for user_id: {user_id}")
 
         credential_data = supabase.table("OauthCredentials").select("*").eq("user_id", user_id).execute().data
         if not credential_data or len(credential_data) == 0:
-            raise ValueError(f"No credentials found for email: {email}")
+            raise ValueError(f"No credentials found for user_id: {user_id}")
 
-        credential_data = credential_data[0]
+        return credential_data[0]
 
-        credentials = Credentials(
-            token=credential_data["access_token"],
-            refresh_token=credential_data['refresh_token'],
-            token_uri=credential_data["token_uri"],
+    @staticmethod
+    def from_authorized_user_info(credentials_dict: dict) -> Credentials:
+        """
+        Convert a dictionary of credentials to a Credentials object
+        """
+        return Credentials(
+            token=credentials_dict["access_token"],
+            refresh_token=credentials_dict["refresh_token"],
+            token_uri=credentials_dict["token_uri"],
             client_id=CLIENT_ID,
             client_secret=CLIENT_SECRET,
             scopes=[
@@ -148,5 +165,3 @@ class OAuthCredentialsService:
                 "https://www.googleapis.com/auth/drive.readonly"
             ],
         )
-
-        return credentials

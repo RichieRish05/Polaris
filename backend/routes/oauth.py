@@ -14,19 +14,18 @@ load_dotenv()
 router = APIRouter()
 
 BASE_URL = os.getenv("FRONTEND_URL")
-oauth_credentials_service = OAuthCredentialsService()
-jwt_service = JwtService()
+OAuthCredentialsService = OAuthCredentialsService()
 
 @router.get("/authorize")
 async def get_oauth_redirect_uri(response: Response, request: Request):
     # Check if user is already authenticated
-    payload = jwt_service.verify_token(request.cookies.get("access_token"))
+    payload = JwtService.verify_token(request.cookies.get("access_token"))
     if payload:
         return RedirectResponse(f"{BASE_URL}/", status_code=302)
 
     
 
-    flow = oauth_credentials_service.get_flow()
+    flow = OAuthCredentialsService.get_flow()
     redirect_url, state = flow.authorization_url(
         access_type='offline',  # Required to get refresh token
         prompt='consent'        # Force consent screen to get refresh token
@@ -59,7 +58,7 @@ async def oauth_callback(
         response.delete_cookie(key="oauth_state")
         raise HTTPException(status_code=400, detail="State mismatch")
 
-    flow = oauth_credentials_service.get_flow()
+    flow = OAuthCredentialsService.get_flow()
     flow.fetch_token(code=code)
 
 
@@ -69,7 +68,7 @@ async def oauth_callback(
 
     # Store credentials in database
     try:
-        oauth_credentials = await oauth_credentials_service.store_credentials(userinfo, flow.credentials)
+        oauth_credentials = await OAuthCredentialsService.store_credentials(userinfo, flow.credentials)
     except Exception as e:
         print(f"Error storing credentials: {e}")
         raise HTTPException(status_code=500, detail="Failed to store credentials")
@@ -79,7 +78,7 @@ async def oauth_callback(
         "user_id": oauth_credentials['user_id'],
     }
 
-    access_token = jwt_service.generate_token(payload)
+    access_token = JwtService.generate_token(payload)
     redirect_response = RedirectResponse(f"{BASE_URL}/settings")
     redirect_response.set_cookie(
         key="access_token",
@@ -96,7 +95,7 @@ async def oauth_callback(
 
 @router.get("/me")
 async def get_me(request: Request):
-    payload = jwt_service.verify_token(request.cookies.get("access_token"))
+    payload = JwtService.verify_token(request.cookies.get("access_token"))
     if not payload:
         raise HTTPException(status_code=401, detail="Unauthorized invalid token")
 
@@ -124,12 +123,12 @@ async def logout(response: Response):
 
 @router.get("/drive-files")
 async def get_drive_files(request: Request, next_page_token: str = None, page_size: int = 10):
-    payload = jwt_service.verify_token(request.cookies.get("access_token"))
+    payload = JwtService.verify_token(request.cookies.get("access_token"))
     if not payload:
         raise HTTPException(status_code=401, detail="Unauthorized invalid token")
 
     user_id = payload.get("user_id")
-    credentials = await oauth_credentials_service.get_credentials(user_id)
+    credentials = await OAuthCredentialsService.get_credentials(user_id)
 
     service = build('drive', 'v3', credentials=credentials)
     

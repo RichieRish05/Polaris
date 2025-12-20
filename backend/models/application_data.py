@@ -6,7 +6,6 @@ class User(BaseModel):
     email: str = Field(..., description="The email of the user")
     created_at: datetime = Field(..., description="The creation date")
     oauth_access_id: str = Field(..., description="The foreign key to the user's OAuth credentials")
-    jobs: list[Job] = Field(..., description="The jobs the user has started")
 
 class OauthCredentials(BaseModel):
     oauth_credentials_id: str = Field(..., description="The foreign key to the user's OAuth credentials")
@@ -40,3 +39,5 @@ class ResumeData(BaseModel):
     graduation_year: int = Field(..., description="The graduation year of the application")
     uploaded_at: datetime = Field(..., description="The creation date")
 
+class StartJobRequest(BaseModel):
+    folder_id: str = Field(..., description="The Google Drive folder ID")

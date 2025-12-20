@@ -26,7 +26,6 @@ export default function NewJobPage() {
   const [driveFolders, setDriveFolders] = useState<any[]>([])
   const [nextPageToken, setNextPageToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [canRestart, setCanRestart] = useState(false)
 
 
   const fetchDriveFiles = async (fromBeginning: boolean = false, pageSize: number = 10) => {
@@ -47,7 +46,6 @@ export default function NewJobPage() {
       const data = await response.json()
       setDriveFolders(data.files)
       setNextPageToken(data.nextPageToken)
-      setCanRestart(true)
     } catch (error) {
       console.error('Error fetching drive files:', error)
     } finally {
@@ -59,17 +57,32 @@ export default function NewJobPage() {
     fetchDriveFiles();
   }, [])
 
-
-  const handleFolderSelect = (folder: DriveFolder) => {
-    setSelectedFolder(folder)
-  }
-
   const handleSubmit = async () => {
     setIsSubmitting(true)
     // Simulate job creation
-    setTimeout(() => {
-      router.push("/")
-    }, 2000)
+    console.log(selectedFolder?.id)
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/job/start-job`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          folder_id: selectedFolder?.id,
+        }),
+      })
+      if (!response.ok) {
+        throw new Error('Failed to start job')
+      }
+      const data = await response.json()
+      console.log(data)
+    } catch (error) {
+      console.error('Error starting job:', error)
+    }
+
+    router.push("/")
+
   }
 
   return (
@@ -126,7 +139,7 @@ export default function NewJobPage() {
                 <CardDescription>Choose a folder containing PDF resumes to review</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2 grid grid-cols-2 gap-4 min-h-[500px] overflow-y-auto">
+                <div className={"grid grid-cols-2 gap-4 overflow-y-auto"}>
                   {isLoading ? (
                     <div className="flex flex-col items-center justify-center col-span-2">
                       <Loader2 className="h-8 w-8 animate-spin" />
@@ -136,8 +149,8 @@ export default function NewJobPage() {
                     driveFolders.map((folder) => (
                     <button
                       key={folder.id}
-                      onClick={() => handleFolderSelect(folder)}
-                      className={`flex w-full h-20 items-center justify-between rounded-lg border p-4 text-left hover:bg-accent ${
+                      onClick={() => setSelectedFolder(folder)}
+                      className={`flex w-full min-h-20 items-center justify-between rounded-lg border p-4 text-left hover:bg-accent ${
                         selectedFolder?.id === folder.id ? "border-primary bg-accent" : "border-border"
                       }`}
                     >
@@ -238,39 +251,6 @@ export default function NewJobPage() {
                     <Button variant="ghost" size="sm" onClick={() => setStep(2)}>
                       Edit
                     </Button>
-                  </div>
-                  <div className="flex items-center gap-2 border-t border-border pt-4">
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                    <p className="text-sm">
-                      {/* <span className="font-medium">{selectedFolder?.fileCount}</span> resumes will be processed */}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="rounded-lg border border-border bg-muted/50 p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="mt-0.5">
-                      <svg
-                        className="h-5 w-5 text-muted-foreground"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        viewBox="0 0 24 24"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <p className="text-sm font-medium">Processing Time</p>
-                      <p className="text-sm text-muted-foreground">
-                        This job will be processed asynchronously. You'll be notified when it's complete.
-                      </p>
-                    </div>
                   </div>
                 </div>
 
