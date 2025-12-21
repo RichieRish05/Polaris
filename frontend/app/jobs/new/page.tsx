@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ChevronRight, Folder, FileText, Loader2 } from "lucide-react"
+import { useAuthStore } from "@/app/store/useAuthStore"
 
 interface DriveFolder {
   id: string
@@ -18,6 +19,7 @@ interface DriveFolder {
 
 export default function NewJobPage() {
   const router = useRouter()
+  const { user, isAuthenticated, logout, setUser} = useAuthStore()
   const [step, setStep] = useState(1)
   const [selectedFolder, setSelectedFolder] = useState<DriveFolder | null>(null)
   const [jobName, setJobName] = useState("")
@@ -26,6 +28,14 @@ export default function NewJobPage() {
   const [driveFolders, setDriveFolders] = useState<any[]>([])
   const [nextPageToken, setNextPageToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/")
+      return
+    }
+    fetchDriveFiles();
+  }, [isAuthenticated, router])
 
 
   const fetchDriveFiles = async (fromBeginning: boolean = false, pageSize: number = 10) => {
@@ -44,18 +54,17 @@ export default function NewJobPage() {
         credentials: 'include',
       })
       const data = await response.json()
-      setDriveFolders(data.files)
-      setNextPageToken(data.nextPageToken)
+      setDriveFolders(data.files || [])
+      setNextPageToken(data.nextPageToken || null)
     } catch (error) {
       console.error('Error fetching drive files:', error)
+      setDriveFolders([])
+      setNextPageToken(null)
     } finally {
       setIsLoading(false)
     }
   }
 
-  useEffect(() => {
-    fetchDriveFiles();
-  }, [])
 
   const handleSubmit = async () => {
     setIsSubmitting(true)
@@ -70,6 +79,7 @@ export default function NewJobPage() {
         },
         body: JSON.stringify({
           folder_id: selectedFolder?.id,
+          name: jobName || "Untitled Job",
         }),
       })
       if (!response.ok) {
