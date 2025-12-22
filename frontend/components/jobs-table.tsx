@@ -5,73 +5,64 @@ import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ArrowUpDown } from "lucide-react"
+import { ArrowUpDown, Loader2 } from "lucide-react"
+import { useEffect } from "react"
+import { useAuthStore } from "@/app/store/useAuthStore"
 
 interface Job {
   id: string
   name: string
-  folderName: string
-  resumeCount: number
+  folder_name: string
+  resume_count: number
   status: "queued" | "processing" | "completed" | "failed"
-  createdAt: string
+  created_at: string
 }
 
-const mockJobs: Job[] = [
-  {
-    id: "1",
-    name: "Fall 2024 Internship Applicants",
-    folderName: "Internship Applications",
-    resumeCount: 127,
-    status: "completed",
-    createdAt: "2024-01-15",
-  },
-  {
-    id: "2",
-    name: "Senior Software Engineer - Q1",
-    folderName: "SWE Applications",
-    resumeCount: 89,
-    status: "completed",
-    createdAt: "2024-01-10",
-  },
-  {
-    id: "3",
-    name: "Product Manager Screening",
-    folderName: "PM Resumes",
-    resumeCount: 45,
-    status: "processing",
-    createdAt: "2024-01-08",
-  },
-  {
-    id: "4",
-    name: "Marketing Team Expansion",
-    folderName: "Marketing Applications",
-    resumeCount: 62,
-    status: "completed",
-    createdAt: "2024-01-05",
-  },
-  {
-    id: "5",
-    name: "Data Science Summer Interns",
-    folderName: "DS Intern Apps",
-    resumeCount: 31,
-    status: "queued",
-    createdAt: "2024-01-02",
-  },
-]
+
+
+
 
 export function JobsTable() {
-  const [jobs] = useState<Job[]>(mockJobs)
+  const [jobs, setJobs] = useState<Job[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const { user, isAuthenticated, logout, setUser} = useAuthStore()
+
+  useEffect(() => {
+    if (!isAuthenticated){
+      setJobs([])
+      return
+    }
+    
+    const fetchJobs = async () => {
+      setIsLoading(true)
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/query/get-jobs`, {
+        credentials: 'include',
+      })
+      
+      if (!response.ok) {
+        setJobs([])
+        setIsLoading(false)
+        return
+      }
+      const data = await response.json()
+      console.log(data)
+      setJobs(data)
+      setIsLoading(false)
+    }
+
+    fetchJobs()
+  }, [isAuthenticated])
 
   const getStatusBadge = (status: Job["status"]) => {
     const variants = {
       queued: "secondary",
-      processing: "default",
+      pending: "default",
       completed: "outline",
       failed: "destructive",
     } as const
 
     return (
-      <Badge variant={variants[status]} className="capitalize">
+      <Badge variant={variants[status as keyof typeof variants]} className="capitalize">
         {status}
       </Badge>
     )
@@ -82,7 +73,7 @@ export function JobsTable() {
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
-            <TableHead className="w-[300px]">
+            <TableHead>
               <Button variant="ghost" size="sm" className="-ml-3 h-8 font-medium">
                 Job Name
                 <ArrowUpDown className="ml-2 h-3 w-3" />
@@ -91,12 +82,6 @@ export function JobsTable() {
             <TableHead>
               <Button variant="ghost" size="sm" className="-ml-3 h-8 font-medium">
                 Folder Name
-                <ArrowUpDown className="ml-2 h-3 w-3" />
-              </Button>
-            </TableHead>
-            <TableHead>
-              <Button variant="ghost" size="sm" className="-ml-3 h-8 font-medium">
-                Resumes
                 <ArrowUpDown className="ml-2 h-3 w-3" />
               </Button>
             </TableHead>
@@ -109,7 +94,14 @@ export function JobsTable() {
             </TableHead>
           </TableRow>
         </TableHeader>
-        <TableBody>
+        {isLoading ? (
+          <TableBody>
+            <TableRow>
+              <TableCell colSpan={5} className="text-center">Loading jobs...</TableCell>
+            </TableRow>
+          </TableBody>
+        ) : (
+          <TableBody>
           {jobs.map((job) => (
             <TableRow key={job.id} className="cursor-pointer">
               <TableCell className="font-medium">
@@ -117,11 +109,10 @@ export function JobsTable() {
                   {job.name}
                 </Link>
               </TableCell>
-              <TableCell className="text-muted-foreground">{job.folderName}</TableCell>
-              <TableCell>{job.resumeCount}</TableCell>
+              <TableCell className="text-muted-foreground">{job.folder_name}</TableCell>
               <TableCell>{getStatusBadge(job.status)}</TableCell>
               <TableCell className="text-muted-foreground">
-                {new Date(job.createdAt).toLocaleDateString("en-US", {
+                {new Date(job.created_at).toLocaleDateString("en-US", {
                   year: "numeric",
                   month: "short",
                   day: "numeric",
@@ -129,8 +120,8 @@ export function JobsTable() {
               </TableCell>
             </TableRow>
           ))}
-        </TableBody>
+          </TableBody>
+        )}
       </Table>
     </div>
-  )
-}
+)}

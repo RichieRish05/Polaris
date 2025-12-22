@@ -13,10 +13,19 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from supabase import create_client, Client
 import requests
+from services.supabase_service import SupabaseService
 
+supabase_service = SupabaseService()
 load_dotenv()
 
 router = APIRouter()
+
+inngest_client = inngest.Inngest(
+    app_id="Polaris",
+    logger=logging.getLogger("uvicorn"),
+)
+
+
 
 
 @router.post("/start-job")
@@ -34,11 +43,12 @@ async def start_job(request: Request, body: StartJobRequest):
     try:
 
         # Upload the job to postgres
-        supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_ROLE_KEY"))
+        supabase = supabase_service.get_supabase()
         job = supabase.table("jobs").insert({
             "user_id": user_id,
             "google_id": body.folder_id,
             "status": "pending",
+            "folder_name": body.folder_name,
             "name": body.name,
         }).execute().data[0]
         
@@ -59,18 +69,12 @@ async def start_job(request: Request, body: StartJobRequest):
     return {"message": "Job started"}
 
 
-inngest_client = inngest.Inngest(
-    app_id="Polaris",
-    logger=logging.getLogger("uvicorn"),
-)
-
-
 async def kill_job(ctx: inngest.Context) -> None:
     """
     Kill a job
     """
     job_id = ctx.event.data["event"]["data"]["job_id"]
-    supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_ROLE_KEY"))
+    supabase = supabase_service.get_supabase()
     supabase.table("jobs").update({
         "status": "failed"
     }).eq("id", job_id).execute()
@@ -80,7 +84,7 @@ async def kill_resume_job(ctx: inngest.Context) -> None:
     Kill a resume job
     """
     resume_job_id = ctx.event.data["event"]["data"]["resume_job_id"]
-    supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_ROLE_KEY"))
+    supabase = supabase_service.get_supabase()
     supabase.table("resumes").update({
         "status": "failed"
     }).eq("id", resume_job_id).execute()
@@ -121,6 +125,7 @@ async def start_job(ctx: inngest.Context) -> None:
                 upload_resume_id,
                 file["id"],
                 job_id,
+                file["name"],
             )
             # Queue the score-resume function
             await ctx.step.invoke(
@@ -147,7 +152,7 @@ async def update_job_status(job_id: int) -> None:
     """
     Update the job status
     """
-    supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_ROLE_KEY"))
+    supabase = supabase_service.get_supabase()
     supabase.table("jobs").update({
         "status": "completed"
     }).eq("id", job_id).execute()
@@ -225,7 +230,7 @@ async def update_resume_status(resume_job_id: int) -> None:
     """
     Update the resume status
     """
-    supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_ROLE_KEY"))
+    supabase = supabase_service.get_supabase()
     supabase.table("resumes").update({
         "status": "scored"
     }).eq("id", resume_job_id).execute()
@@ -267,17 +272,18 @@ async def generate_score(resume_job_id: int) -> str:
     return res.json()
 
 
-async def upload_resume_id(file_id: str, job_id: str) -> dict:
+async def upload_resume_id(file_id: str, job_id: str, file_name: str) -> dict:
     """
     Upload the resume id to postgres
     """
-    supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_ROLE_KEY"))
+    supabase = supabase_service.get_supabase()
     resume = supabase.table("resumes").insert({
         "google_id": file_id,
         "job_id": job_id,
         "status": "pending",
         "view_url": f"https://drive.google.com/file/d/{file_id}/view",
         "preview_url": f"https://drive.google.com/file/d/{file_id}/preview",
+        "file_name": file_name,
     }).execute().data
 
     return resume[0]

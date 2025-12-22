@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { ChevronRight, Download, FileText, CheckCircle2, AlertCircle } from "lucide-react"
+import { useState, useEffect } from "react"
+import { useAuthStore } from "@/app/store/useAuthStore"
+import { GraduationCap, Briefcase, Calendar } from "lucide-react"
 
 interface ScoreBreakdown {
   category: string
@@ -21,32 +24,70 @@ const mockScoreBreakdown: ScoreBreakdown[] = [
   { category: "Cultural Fit", score: 90, maxScore: 100 },
 ]
 
+interface Resume {
+  id: number
+  created_at: string
+  job_id: number
+  score: number | null
+  gpa: number | null
+  num_internships: number | null
+  status: "scored" | "pending" | "failed"
+  candidate_name: string | null
+  file_name: string
+  google_id: string
+  preview_url: string
+  school_year: string | null
+  text_url: string
+  view_url: string
+}
+
 export default function ResumeDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const [resume, setResume] = useState<Resume | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const { user, isAuthenticated, logout, setUser} = useAuthStore()
 
-  const overallScore = 92
-  const candidateName = "Sarah Johnson"
-  const fileName = "sarah_johnson_resume.pdf"
 
-  const strengths = [
-    "5+ years of professional React development experience",
-    "Strong leadership skills demonstrated through tech lead role",
-    "Contributed to major open source projects",
-    "Excellent problem-solving abilities",
-    "Strong communication skills",
-  ]
+  useEffect(() => {
+    if (!isAuthenticated){
+      router.push("/")
+      setResume(null)
+      setIsLoading(false)
+      return
+    }
+    const fetchResume = async () => {
+      setIsLoading(true)
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/query/get-resume?resume_id=${params.resumeId}`, {
+          credentials: 'include',
+        })
+        if (!response.ok){
+          setResume(null)
+          throw new Error("Failed to fetch resume")
+        }
+        const data = await response.json()
+        setResume(data)
+      } catch (error) {
+        setResume(null)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchResume()
+  }, [isAuthenticated, params.resumeId])
 
-  const weaknesses = [
-    "Limited backend development experience",
-    "No direct experience with TypeScript (though JavaScript expertise is strong)",
-    "Gap in employment from 2021-2022",
-  ]
 
-  const summary =
-    "Sarah is a strong candidate with extensive frontend development experience. Her React expertise and leadership background make her an excellent fit for senior-level positions. While she has limited backend experience, her strong foundation and proven ability to learn new technologies quickly suggest this gap can be addressed. Her open source contributions demonstrate initiative and community engagement."
+  const getSuggestions = (score: number) => {
+    if (score >= 85)
+      return "Excellent candidate - Highly recommended"
+    if (score >= 70)
+      return "Good candidate - Recommended"
+    if (score >= 50)
+      return "Average candidate - Considerable"
+    return "Poor candidate - Not recommended"
+  }
 
-  const flags = ["Resume exceeds standard 2-page length", "Salary expectations may be above budget range"]
 
   return (
     <DashboardLayout>
@@ -67,20 +108,17 @@ export default function ResumeDetailPage() {
               Fall 2024 Internship Applicants
             </Button>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">{candidateName}</span>
+            <span className="text-sm font-medium">{resume?.file_name}</span>
           </div>
 
           {/* Header */}
           <div className="mb-8 flex items-start justify-between">
             <div>
-              <h1 className="text-3xl font-semibold tracking-tight">{candidateName}</h1>
-              <p className="mt-2 text-sm text-muted-foreground">{fileName}</p>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm">
-                <Download className="mr-2 h-4 w-4" />
-                Download Resume
-              </Button>
+              {isLoading ? (
+                <h1 className="text-3xl font-semibold tracking-tight animate-pulse text-muted-foreground">Loading...</h1>
+              ) : (
+              <h1 className="text-3xl font-semibold tracking-tight">{resume?.file_name}</h1>
+              )}
             </div>
           </div>
 
@@ -92,17 +130,26 @@ export default function ResumeDetailPage() {
                   <CardTitle>Resume Preview</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="aspect-[8.5/11] rounded-lg border border-border bg-muted/50 flex items-center justify-center">
-                    <div className="text-center">
-                      <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
-                      <p className="mt-2 text-sm text-muted-foreground">PDF Preview</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{fileName}</p>
+                  {isLoading ? (
+                    <div className="aspect-[8.5/11] rounded-lg border border-border bg-muted/50 flex items-center justify-center animate-pulse">
+                      <div className="text-center">
+                        <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+                        <p className="mt-2 text-sm text-muted-foreground animate-pulse">Loading...</p>
+                      </div>
                     </div>
-                  </div>
-                  <Button className="mt-4 w-full bg-transparent" variant="outline">
-                    <Download className="mr-2 h-4 w-4" />
-                    Download PDF
-                  </Button>
+                  ) : (
+                  
+                    <div className="aspect-[8.5/11] rounded-lg border border-border bg-muted/50 flex items-center justify-center">
+                      {resume?.preview_url ? (
+                      <iframe src={resume?.preview_url} className="w-full h-full" title="Resume Preview" />
+                      ) : (
+                        <div className="text-center">
+                          <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+                          <p className="mt-2 text-sm text-muted-foreground">No preview available</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -118,15 +165,23 @@ export default function ResumeDetailPage() {
                 <CardContent>
                   <div className="flex items-center gap-6">
                     <div className="flex h-24 w-24 items-center justify-center rounded-full bg-primary/10">
-                      <span className="text-3xl font-bold text-primary">{overallScore}</span>
+                      <span className="text-3xl font-bold text-primary">{resume?.score}</span>
                     </div>
                     <div className="flex-1">
-                      <Progress value={overallScore} className="h-3" />
-                      <p className="mt-2 text-sm text-muted-foreground">Excellent candidate - Highly recommended</p>
+                      <Progress value={resume?.score} className="h-3" />
+                      {isLoading ? (
+                        <p className="mt-2 text-sm text-muted-foreground animate-pulse">Calculating...</p>
+                      ) : (
+                      <p className="mt-2 text-sm text-muted-foreground">{getSuggestions(resume?.score ?? 0)}</p>
+                      )}
                     </div>
                   </div>
                 </CardContent>
               </Card>
+
+              {/* GPA */}
+              <AcademicCard gpa={resume?.gpa ?? 0} internships={resume?.num_internships ?? 0} schoolYear={resume?.school_year ?? "N/A"} />
+              
 
               {/* Score Breakdown */}
               <Card>
@@ -150,79 +205,61 @@ export default function ResumeDetailPage() {
                   </div>
                 </CardContent>
               </Card>
-
-              {/* AI Summary */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Summary Evaluation</CardTitle>
-                  <CardDescription>AI-generated analysis of candidate fit</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm leading-relaxed text-foreground">{summary}</p>
-                </CardContent>
-              </Card>
-
-              {/* Strengths */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Key Strengths</CardTitle>
-                  <CardDescription>Notable qualifications and positive attributes</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-3">
-                    {strengths.map((strength, idx) => (
-                      <li key={idx} className="flex items-start gap-3">
-                        <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-600" />
-                        <span className="text-sm leading-relaxed">{strength}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-
-              {/* Weaknesses */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Areas for Development</CardTitle>
-                  <CardDescription>Potential concerns or skill gaps</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-3">
-                    {weaknesses.map((weakness, idx) => (
-                      <li key={idx} className="flex items-start gap-3">
-                        <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-yellow-600" />
-                        <span className="text-sm leading-relaxed">{weakness}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-
-              {/* Notable Flags */}
-              {flags.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Notable Flags</CardTitle>
-                    <CardDescription>Items requiring attention or follow-up</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-3">
-                      {flags.map((flag, idx) => (
-                        <li key={idx} className="flex items-start gap-3">
-                          <div className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-yellow-100">
-                            <div className="h-2 w-2 rounded-full bg-yellow-600" />
-                          </div>
-                          <span className="text-sm leading-relaxed">{flag}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              )}
             </div>
           </div>
         </div>
       </main>
     </DashboardLayout>
+  )
+}
+
+
+
+interface AcademicCardProps {
+  gpa: number
+  internships: number
+  schoolYear: string
+}
+
+export function AcademicCard({ gpa, internships, schoolYear }: AcademicCardProps) {
+  return (
+    <Card className="w-full">
+      <CardContent className="p-8">
+        <div className="space-y-6">
+          {/* GPA Section */}
+          <div className="flex items-center justify-between border-b-2 border-black pb-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-black p-3">
+                <GraduationCap className="h-6 w-6 text-white" />
+              </div>
+              <span className="text-sm font-medium uppercase tracking-wider text-black">GPA</span>
+            </div>
+            <span className="text-4xl font-bold text-black">{gpa.toFixed(2)}</span>
+          </div>
+
+          {/* Internships Section */}
+          <div className="flex items-center justify-between border-b-2 border-black pb-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-black p-3">
+                <Briefcase className="h-6 w-6 text-white" />
+              </div>
+              <span className="text-sm font-medium uppercase tracking-wider text-black">Internships</span>
+            </div>
+            <span className="text-4xl font-bold text-black">{internships}</span>
+          </div>
+
+          {/* School Year Section */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-black p-3">
+                <Calendar className="h-6 w-6 text-white" />
+              </div>
+              <span className="text-sm font-medium uppercase tracking-wider text-black">Year</span>
+            </div>
+            <span className="text-2xl font-bold text-black">{schoolYear}</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

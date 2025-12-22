@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from routes import oauth_router, job_router, inngest_client, start_job, score_resume
+from routes import oauth_router, job_router, inngest_client, start_job, score_resume, query_router
 import uvicorn
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
@@ -31,11 +31,11 @@ inngest.fast_api.serve(app, inngest_client, [start_job, score_resume])
 # Include routers
 app.include_router(oauth_router, prefix="/api/oauth", tags=["oauth"])
 app.include_router(job_router, prefix="/api/job", tags=["job"])
+app.include_router(query_router, prefix="/api/query", tags=["query"])
 
 @app.get("/")
 async def root():
     return {"message": "Welcome to Polaris API"}
-
 
 
 if __name__ == "__main__":

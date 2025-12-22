@@ -22,6 +22,7 @@ export default function NewJobPage() {
   const { user, isAuthenticated, logout, setUser} = useAuthStore()
   const [step, setStep] = useState(1)
   const [selectedFolder, setSelectedFolder] = useState<DriveFolder | null>(null)
+  const [selectedFolderName, setSelectedFolderName] = useState<string | null>(null)
   const [jobName, setJobName] = useState("")
   const [jobDescription, setJobDescription] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -79,6 +80,7 @@ export default function NewJobPage() {
         },
         body: JSON.stringify({
           folder_id: selectedFolder?.id,
+          folder_name: selectedFolderName,
           name: jobName || "Untitled Job",
         }),
       })
@@ -93,6 +95,11 @@ export default function NewJobPage() {
 
     router.push("/")
 
+  }
+
+  const handleFolderClick = (folder: DriveFolder) => {
+    setSelectedFolder(folder)
+    setSelectedFolderName(folder.name)
   }
 
   return (
@@ -159,7 +166,7 @@ export default function NewJobPage() {
                     driveFolders.map((folder) => (
                     <button
                       key={folder.id}
-                      onClick={() => setSelectedFolder(folder)}
+                      onClick={() => handleFolderClick(folder)}
                       className={`flex w-full min-h-20 items-center justify-between rounded-lg border p-4 text-left hover:bg-accent ${
                         selectedFolder?.id === folder.id ? "border-primary bg-accent" : "border-border"
                       }`}

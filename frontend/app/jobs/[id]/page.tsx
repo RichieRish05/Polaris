@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
@@ -10,80 +10,77 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ChevronRight, Search, Download, TrendingUp, TrendingDown, Minus } from "lucide-react"
+import { useAuthStore } from "@/app/store/useAuthStore"
 
 interface Resume {
-  id: string
-  candidateName: string
-  overallScore: number
-  strengths: string[]
-  weaknesses: string[]
-  status: "processed" | "failed"
+  id: number
+  created_at: string
+  job_id: number
+  score: number | null
+  gpa: number | null
+  num_internships: number | null
+  status: "scored" | "pending" | "failed"
+  preview_url: string | null
+  candidate_name: string | null
+  google_id: string
+  text_url: string | null
+  view_url: string | null
+  school_year: string | null
+  file_name: string | null
 }
 
-const mockResumes: Resume[] = [
-  {
-    id: "1",
-    candidateName: "Sarah Johnson",
-    overallScore: 92,
-    strengths: ["5+ years React", "Strong leadership"],
-    weaknesses: ["Limited backend experience"],
-    status: "processed",
-  },
-  {
-    id: "2",
-    candidateName: "Michael Chen",
-    overallScore: 88,
-    strengths: ["Full-stack expertise", "Open source contributor"],
-    weaknesses: ["No management experience"],
-    status: "processed",
-  },
-  {
-    id: "3",
-    candidateName: "Emily Rodriguez",
-    overallScore: 85,
-    strengths: ["Design systems", "Excellent communication"],
-    weaknesses: ["Limited testing experience"],
-    status: "processed",
-  },
-  {
-    id: "4",
-    candidateName: "James Wilson",
-    overallScore: 78,
-    strengths: ["Quick learner", "Team player"],
-    weaknesses: ["Junior level", "Limited projects"],
-    status: "processed",
-  },
-  {
-    id: "5",
-    candidateName: "Lisa Anderson",
-    overallScore: 95,
-    strengths: ["10+ years experience", "Tech lead background", "Strong architecture skills"],
-    weaknesses: ["Salary expectations high"],
-    status: "processed",
-  },
-  {
-    id: "6",
-    candidateName: "David Kim",
-    overallScore: 72,
-    strengths: ["Eager to learn", "Good academic record"],
-    weaknesses: ["No professional experience", "Limited portfolio"],
-    status: "processed",
-  },
-]
+interface Stats {
+  average_score: number
+  high_score: number
+  lowest_score: number
+  num_resumes: number
+}
 
 export default function JobDetailPage() {
   const params = useParams()
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
-  const [resumes] = useState<Resume[]>(mockResumes)
+  const [resumes, setResumes] = useState<Resume[]>([])
+  const [stats, setStats] = useState<Stats>({ average_score: 0, high_score: 0, lowest_score: 0, num_resumes: 0 })
+  const { user, isAuthenticated, logout, setUser} = useAuthStore()
+  const [isLoading, setIsLoading] = useState(true)
+  const [jobName, setJobName] = useState("")
+  const [jobDate, setJobDate] = useState("")
+
+
+  useEffect(() => {
+    if (!isAuthenticated){
+      setResumes([])
+      router.push("/")
+      return
+    }
+    setIsLoading(true)
+    const fetchResumes = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/query/get-resumes?job_id=${params.id}`, {
+          credentials: 'include',
+        })
+        if (!response.ok){
+          setResumes([])
+          return
+        }
+        const data = await response.json()
+        setResumes(data.resumes)
+        setStats(data.stats)
+        setJobName(data.job_name)
+        setJobDate(data.job_date ? new Date(data.job_date).toLocaleDateString() : "Unknown Date")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchResumes()
+  }, [isAuthenticated, params.id])
 
   const filteredResumes = resumes.filter((resume) =>
-    resume.candidateName.toLowerCase().includes(searchQuery.toLowerCase()),
+    resume.file_name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false,
   )
 
-  const avgScore = Math.round(resumes.reduce((acc, r) => acc + r.overallScore, 0) / resumes.length)
-  const topScore = Math.max(...resumes.map((r) => r.overallScore))
-  const lowestScore = Math.min(...resumes.map((r) => r.overallScore))
 
   const getScoreIndicator = (score: number) => {
     if (score >= 85)
@@ -105,6 +102,15 @@ export default function JobDetailPage() {
     )
   }
 
+  const getStatusBadge = (status: "scored" | "pending" | "failed") => {
+    if (status === "scored")
+      return <Badge variant="default">Scored</Badge>
+    if (status === "pending")
+      return <Badge variant="outline">Pending</Badge>
+    if (status === "failed")
+      return <Badge variant="destructive">Failed</Badge>
+  }
+
   return (
     <DashboardLayout>
       <main className="p-8">
@@ -116,24 +122,32 @@ export default function JobDetailPage() {
                 Jobs
               </Button>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Fall 2024 Internship Applicants</span>
+              {jobName ? (
+              <span className="text-sm font-medium">{jobName}</span>
+              ): (
+              <span className="text-sm font-medium text-muted-foreground">Loading...</span>
+              )}
             </div>
-            <Button variant="outline" size="sm">
-              <Download className="mr-2 h-4 w-4" />
-              Export
-            </Button>
           </div>
 
           {/* Job Header */}
           <div className="mb-8">
             <div className="flex items-start justify-between">
               <div>
-                <h1 className="text-3xl font-semibold tracking-tight">Fall 2024 Internship Applicants</h1>
+                {jobName ? (
+                <h1 className="text-3xl font-semibold tracking-tight">{jobName}</h1>
+                ): (
+                <h1 className="text-3xl font-semibold tracking-tight animate-pulse text-muted-foreground">Loading...</h1>
+                )}
                 <div className="mt-2 flex items-center gap-3">
                   <Badge variant="outline">Completed</Badge>
-                  <span className="text-sm text-muted-foreground">Internship Applications</span>
+                  <span className="text-sm text-muted-foreground">Applications</span>
                   <span className="text-sm text-muted-foreground">•</span>
-                  <span className="text-sm text-muted-foreground">Created Jan 15, 2024</span>
+                  {jobDate ? (
+                  <span className="text-sm text-muted-foreground">{jobDate}</span>
+                  ): (
+                  <span className="text-sm text-muted-foreground animate-pulse">Getting Date...</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -142,39 +156,51 @@ export default function JobDetailPage() {
           {/* Statistics Cards */}
           <div className="mb-8 grid gap-4 md:grid-cols-4">
             <Card>
-              <CardHeader className="pb-2">
+              <CardHeader className="pb-0">
                 <CardDescription>Total Resumes</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-semibold">{resumes.length}</div>
-                <p className="mt-1 text-xs text-muted-foreground">All processed</p>
+                {isLoading ? (
+                  <div className="text-muted-foreground font-semibold animate-pulse">Calculating...</div>
+                ) : (
+                  <div className="text-3xl font-semibold">{stats.num_resumes}</div>
+                )}
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="pb-2">
+              <CardHeader className="pb-0">
                 <CardDescription>Average Score</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-semibold">{avgScore}</div>
-                <p className="mt-1 text-xs text-muted-foreground">Out of 100</p>
+                {isLoading ? (
+                  <div className="text-muted-foreground font-semibold animate-pulse">Calculating...</div>
+                ) : (
+                  <div className="text-3xl font-semibold">{stats.average_score}</div>
+                )}
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="pb-2">
+              <CardHeader className="pb-0">
                 <CardDescription>Top Score</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-semibold">{topScore}</div>
-                <p className="mt-1 text-xs text-green-600">Excellent candidate</p>
+                {isLoading ? (
+                  <div className="text-muted-foreground font-semibold animate-pulse">Calculating...</div>
+                ) : (
+                  <div className="text-3xl font-semibold">{stats.high_score}</div>
+                )}
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="pb-2">
+              <CardHeader className="pb-0"> 
                 <CardDescription>Lowest Score</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-semibold">{lowestScore}</div>
-                <p className="mt-1 text-xs text-muted-foreground">Below threshold</p>
+                {isLoading ? (
+                  <div className="text-muted-foreground font-semibold animate-pulse">Calculating...</div>
+                ) : (
+                  <div className="text-3xl font-semibold">{stats.lowest_score}</div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -205,69 +231,53 @@ export default function JobDetailPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
-                      <TableHead className="w-[200px]">Candidate</TableHead>
-                      <TableHead className="w-[120px]">Score</TableHead>
-                      <TableHead>Strengths</TableHead>
-                      <TableHead>Weaknesses</TableHead>
+                      <TableHead>Candidate</TableHead>
+                      <TableHead>Score</TableHead>
+                      <TableHead>GPA</TableHead>
+                      <TableHead>Number of Internships</TableHead>
+                      <TableHead>School Year</TableHead>
                       <TableHead className="w-[100px]">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredResumes.length > 0 ? (
+                    {isLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground animate-pulse">Loading...</TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredResumes.length > 0 ? (
                       filteredResumes.map((resume) => (
                         <TableRow key={resume.id} className="cursor-pointer">
                           <TableCell className="font-medium">
                             <Link href={`/jobs/${params.id}/resumes/${resume.id}`} className="hover:underline">
-                              {resume.candidateName}
+                              {resume.file_name}
                             </Link>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <span className="text-lg font-semibold">{resume.overallScore}</span>
-                              {getScoreIndicator(resume.overallScore)}
+                              <span className="text-lg font-semibold">{resume.score}</span>
+                              {getScoreIndicator(resume.score ?? 0)}
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {resume.strengths.slice(0, 2).map((strength, idx) => (
-                                <Badge key={idx} variant="secondary" className="text-xs">
-                                  {strength}
-                                </Badge>
-                              ))}
-                              {resume.strengths.length > 2 && (
-                                <Badge variant="secondary" className="text-xs">
-                                  +{resume.strengths.length - 2}
-                                </Badge>
-                              )}
-                            </div>
+                            {resume.gpa?.toFixed(2) ?? "N/A"}
                           </TableCell>
                           <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {resume.weaknesses.slice(0, 2).map((weakness, idx) => (
-                                <Badge key={idx} variant="outline" className="text-xs">
-                                  {weakness}
-                                </Badge>
-                              ))}
-                              {resume.weaknesses.length > 2 && (
-                                <Badge variant="outline" className="text-xs">
-                                  +{resume.weaknesses.length - 2}
-                                </Badge>
-                              )}
-                            </div>
+                            {resume.num_internships ?? "N/A"}
                           </TableCell>
                           <TableCell>
-                            <Badge variant={resume.status === "processed" ? "outline" : "destructive"}>
-                              {resume.status}
-                            </Badge>
+                            {resume.school_year ?? "Unknown"}
+                          </TableCell>
+                          <TableCell>
+                            {getStatusBadge(resume.status)}
                           </TableCell>
                         </TableRow>
                       ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                          No candidates found matching "{searchQuery}"
-                        </TableCell>
-                      </TableRow>
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">No candidates found matching "{searchQuery}"</TableCell>
+                        </TableRow>
+                      )
                     )}
                   </TableBody>
                 </Table>
