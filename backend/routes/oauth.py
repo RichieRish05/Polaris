@@ -85,7 +85,7 @@ async def oauth_callback(
     }
 
     access_token = JwtService.generate_token(payload)
-    redirect_response = RedirectResponse(f"{BASE_URL}")
+    redirect_response = RedirectResponse(f"{BASE_URL}/")
     redirect_response.set_cookie(
         key="access_token",
         value=access_token,
@@ -125,7 +125,10 @@ async def logout(response: Response):
     response.delete_cookie(
         key="access_token",
         path="/",
-        samesite="lax"
+        domain=".prorankai.com",
+        samesite="lax",
+        secure=True,
+        httponly=True
     )
     return {"message": "Logged out successfully"}
 
