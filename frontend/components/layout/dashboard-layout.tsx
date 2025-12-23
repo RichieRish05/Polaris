@@ -11,17 +11,16 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, isInitializing, logout, setIsInitializing } = useAuthStore();
   const router = useRouter();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
     setIsInitializing(true);
-    setTimeout(() => {
-      router.push("/");
-    }, 1000);
+    await logout();
+    router.push("/");
   };
 
   const handleLogin = () => {
     window.location.href = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/oauth/authorize`;
   };
+
 
   return (
     <div className="flex min-h-screen bg-background">

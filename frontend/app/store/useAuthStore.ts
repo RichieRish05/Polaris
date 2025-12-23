@@ -63,8 +63,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch (error) {
       console.error("Error during logout:", error);
     }
-
-    // Clear the in-memory state
+    // Clear the in-memory state (but keep isInitializing as-is to prevent flash)
     set({
       user: null,
       isAuthenticated: false,
