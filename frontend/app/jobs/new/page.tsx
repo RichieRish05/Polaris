@@ -24,8 +24,7 @@ interface DriveFolder {
 
 export default function NewJobPage() {
   const router = useRouter();
-  const { user, isAuthenticated, logout, setUser, isInitializing } =
-    useAuthStore();
+  const { isAuthenticated, isInitializing, fetchUser } = useAuthStore();
   const [step, setStep] = useState(1);
   const [selectedFolder, setSelectedFolder] = useState<DriveFolder | null>(
     null,
@@ -40,22 +39,9 @@ export default function NewJobPage() {
   const [nextPageToken, setNextPageToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    // Wait for auth initialization to complete before checking authentication
-    if (isInitializing) {
-      return;
-    }
-
-    if (!isAuthenticated) {
-      router.push("/");
-      return;
-    }
-    fetchDriveFiles();
-  }, [isAuthenticated, isInitializing, router]);
-
   const fetchDriveFiles = async (
     fromBeginning: boolean = false,
-    pageSize: number = 10,
+    pageSize: number = 50,
   ) => {
     setIsLoading(true);
     const params = new URLSearchParams({ page_size: pageSize.toString() });
@@ -65,7 +51,7 @@ export default function NewJobPage() {
     } else if (nextPageToken) {
       params.append("next_page_token", nextPageToken);
     }
-
+  
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/oauth/drive-files?${params.toString()}`,
@@ -84,6 +70,17 @@ export default function NewJobPage() {
       setIsLoading(false);
     }
   };
+
+
+  useEffect(() => {
+    fetchDriveFiles(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isInitializing && !isAuthenticated) {
+      router.push("/");
+    }
+  }, [isInitializing, isAuthenticated, router]);
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -121,6 +118,17 @@ export default function NewJobPage() {
     setSelectedFolder(folder);
     setSelectedFolderName(folder.name);
   };
+
+  if (isInitializing) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -196,7 +204,7 @@ export default function NewJobPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className={"grid grid-cols-2 gap-4 overflow-y-auto"}>
+                <div className={"grid grid-cols-2 gap-4 h-96 overflow-y-auto"}>
                   {isLoading ? (
                     <div className="flex flex-col items-center justify-center col-span-2">
                       <Loader2 className="h-8 w-8 animate-spin" />
@@ -205,7 +213,7 @@ export default function NewJobPage() {
                       </p>
                     </div>
                   ) : (
-                    driveFolders.map((folder) => (
+                    driveFolders.length > 0 && driveFolders.map((folder) => (
                       <button
                         key={folder.id}
                         onClick={() => handleFolderClick(folder)}

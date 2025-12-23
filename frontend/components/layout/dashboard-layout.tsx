@@ -8,12 +8,19 @@ import { useAuthStore } from "@/app/store/useAuthStore";
 import { useRouter } from "next/navigation";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated, isInitializing, logout } = useAuthStore();
+  const { user, isAuthenticated, isInitializing, logout, setIsInitializing } = useAuthStore();
   const router = useRouter();
 
   const handleLogout = () => {
     logout();
-    router.push("/");
+    setIsInitializing(true);
+    console.log("Logging out");
+    setTimeout(() => {
+      console.log("Redirecting to login");
+      router.push("/");
+      console.log("Redirected to login");
+      setIsInitializing(false);
+    }, 1000);
   };
 
   const handleLogin = () => {

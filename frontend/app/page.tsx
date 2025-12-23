@@ -5,12 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { JobsTable } from "@/components/jobs-table";
-import { useRouter } from "next/navigation";
 import { useAuthStore } from "./store/useAuthStore";
 import { useEffect } from "react";
 
 export default function DashboardPage() {
-  const { isInitializing, fetchUser } = useAuthStore();
+  const { isInitializing, fetchUser, isAuthenticated } = useAuthStore();
 
   useEffect(() => {
     const initialize = async () => {
@@ -38,10 +37,17 @@ export default function DashboardPage() {
             Manage and review resume screening jobs
           </p>
           <Button asChild>
-            <Link href="/jobs/new">
-              <Plus className="mr-2 h-4 w-4" />
-              New Review Job
-            </Link>
+            {isAuthenticated ? (
+              <Link href="/jobs/new">
+                <Plus className="mr-2 h-4 w-4" />
+                New Review Job
+              </Link>
+            ) : (
+              <div>
+                <Plus className="mr-2 h-4 w-4" />
+                New Review Job
+              </div>
+            )}
           </Button>
         </div>
         <JobsTable />

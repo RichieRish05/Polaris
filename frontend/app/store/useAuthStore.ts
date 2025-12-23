@@ -16,6 +16,7 @@ type AuthState = {
   logout: () => void;
   fetchUser: () => Promise<void>;
   isInitializing: boolean;
+  setIsInitializing: (isInitializing: boolean) => void;
 };
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -69,4 +70,6 @@ export const useAuthStore = create<AuthState>((set) => ({
       isAuthenticated: false,
     });
   },
+
+  setIsInitializing: (isInitializing: boolean) => set({ isInitializing }),
 }));
