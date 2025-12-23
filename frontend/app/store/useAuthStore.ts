@@ -55,6 +55,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   logout: async () => {
     // Clear the JWT token cookie by calling the backend logout endpoint
+    set({ isInitializing: true });
     try {
       await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/oauth/logout`, {
         method: "POST",
@@ -63,10 +64,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch (error) {
       console.error("Error during logout:", error);
     }
-    // Clear the in-memory state (but keep isInitializing as-is to prevent flash)
+    // Clear the in-memory state
     set({
       user: null,
       isAuthenticated: false,
+      isInitializing: false
     });
   },
 

@@ -12,7 +12,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   const handleLogout = async () => {
-    setIsInitializing(true);
     await logout();
     router.push("/");
   };
