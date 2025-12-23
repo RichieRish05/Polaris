@@ -34,13 +34,14 @@ async def get_oauth_redirect_uri(response: Response, request: Request):
 
     # Create redirect response and set state cookie on it
     redirect_response = RedirectResponse(redirect_url, status_code=302)
-    redirect_response.set_cookie(
+    response.set_cookie(
         key="oauth_state",
         value=state,
         max_age=600,
         httponly=True,
-        secure=True,              # MUST be True
-        samesite="none",          # MUST be "none" (string, lowercase)
+        secure=True,
+        samesite="lax",
+        domain=".prorankai.com",
         path="/"
     )
 
@@ -85,15 +86,17 @@ async def oauth_callback(
 
     access_token = JwtService.generate_token(payload)
     redirect_response = RedirectResponse(f"{BASE_URL}")
-    redirect_response.set_cookie(
+    response.set_cookie(
         key="access_token",
         value=access_token,
         max_age=86400,
         httponly=True,
         secure=True,
-        samesite="none",
+        samesite="lax",
+        domain=".prorankai.com",
         path="/"
     )
+
 
     return redirect_response
 
