@@ -29,7 +29,6 @@ async def get_oauth_redirect_uri(response: Response, request: Request):
     flow = OAuthCredentialsService.get_flow()
     redirect_url, state = flow.authorization_url(
         access_type='offline',  # Required to get refresh token
-        prompt='consent'        # Force consent screen to get refresh token
     )
 
     # Create redirect response and set state cookie on it
@@ -57,11 +56,25 @@ async def oauth_callback(
     ):
 
     if error:
-        response.delete_cookie(key="oauth_state")
+        response.delete_cookie(
+            key="oauth_state",
+            path="/",
+            domain=".prorankai.com",
+            samesite="lax",
+            secure=True,
+            httponly=True
+        )
         return RedirectResponse(f"{BASE_URL}/")
 
     if oauth_state != state:
-        response.delete_cookie(key="oauth_state")
+        response.delete_cookie(
+            key="oauth_state",
+            path="/",
+            domain=".prorankai.com",
+            samesite="lax",
+            secure=True,
+            httponly=True
+        )
         raise HTTPException(status_code=400, detail="State mismatch")
 
     flow = OAuthCredentialsService.get_flow()

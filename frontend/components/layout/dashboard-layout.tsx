@@ -19,7 +19,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       console.log("Redirecting to login");
       router.push("/");
       console.log("Redirected to login");
-      setIsInitializing(false);
     }, 1000);
   };
 
