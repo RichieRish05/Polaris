@@ -9,9 +9,14 @@ import { useAuthStore } from "./store/useAuthStore";
 import { useEffect } from "react";
 
 export default function DashboardPage() {
-  const { isInitializing, fetchUser, isAuthenticated } = useAuthStore();
+  const { isInitializing, fetchUser, isAuthenticated, setIsInitializing } = useAuthStore();
 
   useEffect(() => {
+    // Set isInitializing to true immediately to prevent flicker
+    // when navigating back after logout
+    if (!isInitializing) {
+      setIsInitializing(true);
+    }
     const initialize = async () => {
       await fetchUser();
     };
