@@ -1,28 +1,24 @@
-"use client"
+"use client";
 
-import type React from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { FileText } from "lucide-react"
-import { useAuthStore } from "@/app/store/useAuthStore"
-import { useRouter } from "next/navigation"
-
-
+import type React from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { FileText } from "lucide-react";
+import { useAuthStore } from "@/app/store/useAuthStore";
+import { useRouter } from "next/navigation";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated, isInitializing, logout} = useAuthStore()
-  const router = useRouter()
+  const { user, isAuthenticated, isInitializing, logout } = useAuthStore();
+  const router = useRouter();
 
   const handleLogout = () => {
-    logout()
-    router.push("/")
-  }
+    logout();
+    router.push("/");
+  };
 
   const handleLogin = () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/oauth/authorize`
-  }
-
-
+    window.location.href = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/oauth/authorize`;
+  };
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -53,10 +49,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         {/* Header */}
         <header className="flex h-16 items-center justify-between border-b border-border bg-card px-8">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Resume Review Jobs</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Resume Review Jobs
+            </h1>
           </div>
           <div className="flex items-center gap-3">
-           {!isInitializing && !isAuthenticated ? (
+            {!isInitializing && !isAuthenticated ? (
               <Button variant="outline" size="sm" onClick={handleLogin}>
                 Login
               </Button>
@@ -66,7 +64,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               </Button>
             )}
             {!isInitializing && isAuthenticated ? (
-              <img src={user?.picture} alt="User Profile Picture" className="h-8 w-8 rounded-full" />
+              <img
+                src={user?.picture}
+                alt="User Profile Picture"
+                className="h-8 w-8 rounded-full"
+              />
             ) : (
               <div className="h-8 w-8 rounded-full bg-muted" />
             )}
@@ -76,5 +78,5 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         {children}
       </div>
     </div>
-  )
+  );
 }

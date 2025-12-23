@@ -1,111 +1,126 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { DashboardLayout } from "@/components/layout/dashboard-layout"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { ChevronRight, Folder, FileText, Loader2 } from "lucide-react"
-import { useAuthStore } from "@/app/store/useAuthStore"
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { ChevronRight, Folder, FileText, Loader2 } from "lucide-react";
+import { useAuthStore } from "@/app/store/useAuthStore";
 
 interface DriveFolder {
-  id: string
-  name: string
+  id: string;
+  name: string;
 }
 
-
 export default function NewJobPage() {
-  const router = useRouter()
-  const { user, isAuthenticated, logout, setUser, isInitializing} = useAuthStore()
-  const [step, setStep] = useState(1)
-  const [selectedFolder, setSelectedFolder] = useState<DriveFolder | null>(null)
-  const [selectedFolderName, setSelectedFolderName] = useState<string | null>(null)
-  const [jobName, setJobName] = useState("")
-  const [jobDescription, setJobDescription] = useState("")
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [driveFolders, setDriveFolders] = useState<any[]>([])
-  const [nextPageToken, setNextPageToken] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter();
+  const { user, isAuthenticated, logout, setUser, isInitializing } =
+    useAuthStore();
+  const [step, setStep] = useState(1);
+  const [selectedFolder, setSelectedFolder] = useState<DriveFolder | null>(
+    null,
+  );
+  const [selectedFolderName, setSelectedFolderName] = useState<string | null>(
+    null,
+  );
+  const [jobName, setJobName] = useState("");
+  const [jobDescription, setJobDescription] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [driveFolders, setDriveFolders] = useState<any[]>([]);
+  const [nextPageToken, setNextPageToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     // Wait for auth initialization to complete before checking authentication
     if (isInitializing) {
-      return
+      return;
     }
-    
+
     if (!isAuthenticated) {
-      router.push("/")
-      return
+      router.push("/");
+      return;
     }
     fetchDriveFiles();
-  }, [isAuthenticated, isInitializing, router])
+  }, [isAuthenticated, isInitializing, router]);
 
-
-  const fetchDriveFiles = async (fromBeginning: boolean = false, pageSize: number = 10) => {
-    setIsLoading(true)
-    const params = new URLSearchParams({ page_size: pageSize.toString() })
+  const fetchDriveFiles = async (
+    fromBeginning: boolean = false,
+    pageSize: number = 10,
+  ) => {
+    setIsLoading(true);
+    const params = new URLSearchParams({ page_size: pageSize.toString() });
 
     if (fromBeginning) {
-      setNextPageToken(null)
-    }
-    else if (nextPageToken) {
-      params.append('next_page_token', nextPageToken)
+      setNextPageToken(null);
+    } else if (nextPageToken) {
+      params.append("next_page_token", nextPageToken);
     }
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/oauth/drive-files?${params.toString()}`, {
-        credentials: 'include',
-      })
-      const data = await response.json()
-      setDriveFolders(data.files || [])
-      setNextPageToken(data.nextPageToken || null)
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/oauth/drive-files?${params.toString()}`,
+        {
+          credentials: "include",
+        },
+      );
+      const data = await response.json();
+      setDriveFolders(data.files || []);
+      setNextPageToken(data.nextPageToken || null);
     } catch (error) {
-      console.error('Error fetching drive files:', error)
-      setDriveFolders([])
-      setNextPageToken(null)
+      console.error("Error fetching drive files:", error);
+      setDriveFolders([]);
+      setNextPageToken(null);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
-
+  };
 
   const handleSubmit = async () => {
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     // Simulate job creation
-    console.log(selectedFolder?.id)
+    console.log(selectedFolder?.id);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/job/start-job`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/job/start-job`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            folder_id: selectedFolder?.id,
+            folder_name: selectedFolderName,
+            name: jobName || "Untitled Job",
+          }),
         },
-        body: JSON.stringify({
-          folder_id: selectedFolder?.id,
-          folder_name: selectedFolderName,
-          name: jobName || "Untitled Job",
-        }),
-      })
+      );
       if (!response.ok) {
-        throw new Error('Failed to start job')
+        throw new Error("Failed to start job");
       }
-      const data = await response.json()
-      console.log(data)
+      const data = await response.json();
+      console.log(data);
     } catch (error) {
-      console.error('Error starting job:', error)
+      console.error("Error starting job:", error);
     }
 
-    router.push("/")
-
-  }
+    router.push("/");
+  };
 
   const handleFolderClick = (folder: DriveFolder) => {
-    setSelectedFolder(folder)
-    setSelectedFolderName(folder.name)
-  }
+    setSelectedFolder(folder);
+    setSelectedFolderName(folder.name);
+  };
 
   return (
     <DashboardLayout>
@@ -114,15 +129,23 @@ export default function NewJobPage() {
           {/* Progress Steps */}
           <div className="mb-8">
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={() => router.push("/")} className="text-muted-foreground">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push("/")}
+                className="text-muted-foreground"
+              >
                 Jobs
               </Button>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">New Review Job</span>
             </div>
-            <h2 className="mt-4 text-3xl font-semibold tracking-tight">Create Resume Review Job</h2>
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight">
+              Create Resume Review Job
+            </h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Select a folder from your Google Drive and configure your resume review job
+              Select a folder from your Google Drive and configure your resume
+              review job
             </p>
           </div>
 
@@ -130,23 +153,33 @@ export default function NewJobPage() {
           <div className="mb-8 flex items-center justify-center gap-2">
             <div
               className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
-                step >= 1 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                step >= 1
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground"
               }`}
             >
               1
             </div>
-            <div className={`h-0.5 w-16 ${step >= 2 ? "bg-primary" : "bg-muted"}`} />
+            <div
+              className={`h-0.5 w-16 ${step >= 2 ? "bg-primary" : "bg-muted"}`}
+            />
             <div
               className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
-                step >= 2 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                step >= 2
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground"
               }`}
             >
               2
             </div>
-            <div className={`h-0.5 w-16 ${step >= 3 ? "bg-primary" : "bg-muted"}`} />
+            <div
+              className={`h-0.5 w-16 ${step >= 3 ? "bg-primary" : "bg-muted"}`}
+            />
             <div
               className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
-                step >= 3 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                step >= 3
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground"
               }`}
             >
               3
@@ -158,40 +191,56 @@ export default function NewJobPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Select Google Drive Folder</CardTitle>
-                <CardDescription>Choose a folder containing PDF resumes to review</CardDescription>
+                <CardDescription>
+                  Choose a folder containing PDF resumes to review
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className={"grid grid-cols-2 gap-4 overflow-y-auto"}>
                   {isLoading ? (
                     <div className="flex flex-col items-center justify-center col-span-2">
                       <Loader2 className="h-8 w-8 animate-spin" />
-                      <p className="text-medium text-muted-foreground">Loading folders...</p>
+                      <p className="text-medium text-muted-foreground">
+                        Loading folders...
+                      </p>
                     </div>
                   ) : (
                     driveFolders.map((folder) => (
-                    <button
-                      key={folder.id}
-                      onClick={() => handleFolderClick(folder)}
-                      className={`flex w-full min-h-20 items-center justify-between rounded-lg border p-4 text-left hover:bg-accent ${
-                        selectedFolder?.id === folder.id ? "border-primary bg-accent" : "border-border"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Folder className="h-5 w-5 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium">{folder.name}</p>
+                      <button
+                        key={folder.id}
+                        onClick={() => handleFolderClick(folder)}
+                        className={`flex w-full min-h-20 items-center justify-between rounded-lg border p-4 text-left hover:bg-accent ${
+                          selectedFolder?.id === folder.id
+                            ? "border-primary bg-accent"
+                            : "border-border"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Folder className="h-5 w-5 text-muted-foreground" />
+                          <div>
+                            <p className="font-medium">{folder.name}</p>
+                          </div>
                         </div>
-                      </div>
-                    </button>
+                      </button>
                     ))
                   )}
                 </div>
                 <div className="mt-6 flex justify-between">
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" onClick={() => {fetchDriveFiles(true)}} disabled={isLoading}>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        fetchDriveFiles(true);
+                      }}
+                      disabled={isLoading}
+                    >
                       First Page
                     </Button>
-                    <Button variant="outline" onClick={() => fetchDriveFiles()} disabled={isLoading}>
+                    <Button
+                      variant="outline"
+                      onClick={() => fetchDriveFiles()}
+                      disabled={isLoading}
+                    >
                       Next Page
                     </Button>
                   </div>
@@ -209,7 +258,9 @@ export default function NewJobPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Job Details</CardTitle>
-                <CardDescription>Name your job and add an optional description</CardDescription>
+                <CardDescription>
+                  Name your job and add an optional description
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
@@ -249,35 +300,53 @@ export default function NewJobPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Review & Start Job</CardTitle>
-                <CardDescription>Review your settings and start the resume review process</CardDescription>
+                <CardDescription>
+                  Review your settings and start the resume review process
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4 rounded-lg border border-border bg-muted/50 p-4">
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
-                      <p className="text-sm font-medium text-muted-foreground">Selected Folder</p>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Selected Folder
+                      </p>
                       <div className="flex items-center gap-2">
                         <Folder className="h-4 w-4 text-muted-foreground" />
                         <p className="font-medium">{selectedFolder?.name}</p>
                       </div>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => setStep(1)}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setStep(1)}
+                    >
                       Change
                     </Button>
                   </div>
                   <div className="flex items-start justify-between border-t border-border pt-4">
                     <div className="space-y-1">
-                      <p className="text-sm font-medium text-muted-foreground">Job Name</p>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Job Name
+                      </p>
                       <p className="font-medium">{jobName}</p>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => setStep(2)}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setStep(2)}
+                    >
                       Edit
                     </Button>
                   </div>
                 </div>
 
                 <div className="flex justify-between pt-4">
-                  <Button variant="outline" onClick={() => setStep(2)} disabled={isSubmitting}>
+                  <Button
+                    variant="outline"
+                    onClick={() => setStep(2)}
+                    disabled={isSubmitting}
+                  >
                     Back
                   </Button>
                   <Button onClick={handleSubmit} disabled={isSubmitting}>
@@ -297,5 +366,5 @@ export default function NewJobPage() {
         </div>
       </main>
     </DashboardLayout>
-  )
+  );
 }

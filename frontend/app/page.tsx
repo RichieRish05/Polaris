@@ -1,24 +1,23 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
-import { DashboardLayout } from "@/components/layout/dashboard-layout"
-import { JobsTable } from "@/components/jobs-table"
-import { useRouter } from "next/navigation"
-import { useAuthStore } from "./store/useAuthStore"
-import { useEffect } from "react"
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { JobsTable } from "@/components/jobs-table";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "./store/useAuthStore";
+import { useEffect } from "react";
 
 export default function DashboardPage() {
-  const { isInitializing, fetchUser } = useAuthStore()
+  const { isInitializing, fetchUser } = useAuthStore();
 
   useEffect(() => {
     const initialize = async () => {
-      await fetchUser()
-    }
-    initialize()
-  }, [])
-
+      await fetchUser();
+    };
+    initialize();
+  }, []);
 
   if (isInitializing) {
     return (
@@ -28,14 +27,16 @@ export default function DashboardPage() {
           <p className="text-sm text-muted-foreground">Loading...</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <DashboardLayout>
       <main className="p-8">
         <div className="mb-6 flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">Manage and review resume screening jobs</p>
+          <p className="text-sm text-muted-foreground">
+            Manage and review resume screening jobs
+          </p>
           <Button asChild>
             <Link href="/jobs/new">
               <Plus className="mr-2 h-4 w-4" />
@@ -46,11 +47,11 @@ export default function DashboardPage() {
         <JobsTable />
       </main>
     </DashboardLayout>
-  )
+  );
 }
 
-
-{/* <div className="flex min-h-[500px] flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card p-12">
+{
+  /* <div className="flex min-h-[500px] flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card p-12">
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted">
               <svg
                 className="h-10 w-10 text-muted-foreground"
@@ -77,4 +78,5 @@ export default function DashboardPage() {
                 Create your first review job
               </Link>
             </Button>
-          </div> */}
+          </div> */
+}
